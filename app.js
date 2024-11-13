@@ -18,16 +18,15 @@ const galleryRoutes = require('./routes/gallery');
 const contactRoutes = require('./routes/contact');
 
 // Import Middleware
-const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
-      ? ['your-production-domain.com'] 
-      : ['http://localhost:3000'], // Your Next.js development port
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-    maxAge: 86400
-  };
-  
+const allowedOrigins = [
+  'http://localhost:3000','https://medorahcdc.vercel.app/' // Your frontend URL
+ ];
+ 
+ const options = {
+   origin: allowedOrigins,
+   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed methods
+   credentials: true,
+ };
 const errorHandler = require('./middleware/errorHandler');
 
 // Initialize Express app
@@ -40,7 +39,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
 // Middleware
 app.use(helmet()); // Security headers
-app.use(cors(corsOptions));
+app.use(cors(options));
 app.use(compression()); // Compress responses
 app.use(morgan('dev')); // Logging
 app.use(express.json());
