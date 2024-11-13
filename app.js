@@ -23,7 +23,7 @@ const allowedOrigins = [
  ];
  
  const options = {
-   origin: allowedOrigins,
+   origin: '*',
    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed methods
    credentials: true,
  };
