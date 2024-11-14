@@ -24,7 +24,7 @@ const allowedOrigins = [
  
  const options = {
    origin: '*',
-   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed methods
+   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], // Specify allowed methods
    credentials: true,
  };
 const errorHandler = require('./middleware/errorHandler');

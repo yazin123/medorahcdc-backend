@@ -57,8 +57,10 @@ const serviceController = {
       res.status(400).json({ error: 'Error creating service' });
     }
   },
+
   updateService: async (req, res) => {
     try {
+      console.log("update initiated")
       const service = await Service.findById(req.params.id);
 
       if (!service) {
@@ -71,33 +73,47 @@ const serviceController = {
       if (req.body.howitworks) updates.howitworks = req.body.howitworks;
       if (req.body.whatisService) updates.whatisService = req.body.whatisService;
 
-      // Handle the handledBy field update
-      if (req.body.handledBy && Array.isArray(req.body.handledBy)) {
-        updates.handledBy = req.body.handledBy;
-      } else if (req.body.handledBy) {
-        updates.handledBy = [req.body.handledBy];
+      // Parse handledBy from JSON string
+      if (req.body.handledBy) {
+        try {
+          updates.handledBy = JSON.parse(req.body.handledBy);
+        } catch (e) {
+          console.error('Error parsing handledBy:', e);
+          updates.handledBy = Array.isArray(req.body.handledBy)
+            ? req.body.handledBy
+            : [req.body.handledBy];
+        }
       }
 
       // Handle image update
       if (req.file) {
-        // Delete old image from Cloudinary if it exists
-        if (service.imageUrl) {
-          await cloudinary.uploader.destroy(
-            path.basename(service.imageUrl, path.extname(service.imageUrl))
-          );
+        try {
+          // Delete old image from Cloudinary if it exists
+          if (service.imageUrl) {
+            const publicId = service.imageUrl.split('/').pop().split('.')[0];
+            await cloudinary.uploader.destroy(publicId);
+          }
+
+          const result = await cloudinary.uploader.upload(req.file.path);
+          updates.imageUrl = result.secure_url;
+
+          // Clean up uploaded file
+          await fs.unlink(req.file.path);
+        } catch (error) {
+          console.error('Error handling image:', error);
+          return res.status(400).json({ error: 'Error processing image' });
         }
-        const result = await cloudinary.uploader.upload(req.file.path);
-        updates.imageUrl = result.secure_url;
       }
 
       const updatedService = await Service.findByIdAndUpdate(
         req.params.id,
         { $set: updates },
         { new: true, runValidators: true }
-      ).populate('handledBy');
+      );
 
       res.json(updatedService);
     } catch (error) {
+      console.error('Service update error:', error);
       res.status(400).json({ error: error.message || 'Error updating service' });
     }
   },

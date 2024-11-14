@@ -1,6 +1,14 @@
+const cloudinary = require('cloudinary').v2;
 const Team = require('../models/Team');
 const fs = require('fs').promises;
 const path = require('path');
+
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_NAME,
+    api_key: process.env.CLOUDINARY_KEY,
+    api_secret: process.env.CLOUDINARY_SECRET
+});
 
 const teamController = {
     getAllTeamMembers: async (req, res) => {
@@ -26,15 +34,18 @@ const teamController = {
 
     createTeamMember: async (req, res) => {
         try {
-            if (!req.body.name || !req.body.position) {
-                return res.status(400).json({ error: 'Name and position are required' });
+            console.log("creating")
+            let imageUrl = null;
+            if (req.file) {
+                const result = await cloudinary.uploader.upload(req.file.path);
+                imageUrl = result.secure_url;
             }
 
             const member = new Team({
                 name: req.body.name,
                 position: req.body.position,
                 bio: req.body.bio,
-                image: req.file ? req.file.filename : null,
+                image: imageUrl,
                 socialLinks: {
                     linkedin: req.body.linkedin || '',
                     twitter: req.body.twitter || '',
@@ -45,10 +56,7 @@ const teamController = {
             await member.save();
             res.status(201).json(member);
         } catch (error) {
-            if (req.file) {
-                await fs.unlink(path.join(__dirname, '..', 'uploads', req.file.filename))
-                    .catch(err => console.error('Error deleting uploaded file:', err));
-            }
+            console.log("error creating team member : ",error)
             res.status(400).json({ error: error.message || 'Error creating team member' });
         }
     },
@@ -57,20 +65,13 @@ const teamController = {
         try {
             const member = await Team.findById(req.params.id);
             if (!member) {
-                if (req.file) {
-                    await fs.unlink(path.join(__dirname, '..', 'uploads', req.file.filename))
-                        .catch(err => console.error('Error deleting uploaded file:', err));
-                }
                 return res.status(404).json({ error: 'Team member not found' });
             }
 
-            // Update fields if provided
             const updates = {};
             if (req.body.name) updates.name = req.body.name;
             if (req.body.position) updates.position = req.body.position;
             if (req.body.bio) updates.bio = req.body.bio;
-
-            // Update social links
             updates.socialLinks = {
                 linkedin: req.body.linkedin || member.socialLinks.linkedin,
                 twitter: req.body.twitter || member.socialLinks.twitter,
@@ -79,12 +80,19 @@ const teamController = {
 
             // Handle image update
             if (req.file) {
-                // Delete old image if it exists
-                if (member.image) {
-                    await fs.unlink(path.join(__dirname, '..', 'uploads', member.image))
-                        .catch(err => console.error('Error deleting old image:', err));
+                try {
+                    // Delete old image from Cloudinary if it exists
+                    if (member.image) {
+                        const publicId = member.image.split('/').pop().split('.')[0];
+                        await cloudinary.uploader.destroy(publicId);
+                    }
+
+                    const result = await cloudinary.uploader.upload(req.file.path);
+                    updates.image = result.secure_url;
+                } catch (error) {
+                    console.error('Error handling image:', error);
+                    return res.status(400).json({ error: 'Error processing image' });
                 }
-                updates.image = req.file.filename;
             }
 
             const updatedMember = await Team.findByIdAndUpdate(
@@ -95,10 +103,6 @@ const teamController = {
 
             res.json(updatedMember);
         } catch (error) {
-            if (req.file) {
-                await fs.unlink(path.join(__dirname, '..', 'uploads', req.file.filename))
-                    .catch(err => console.error('Error deleting uploaded file:', err));
-            }
             res.status(400).json({ error: error.message || 'Error updating team member' });
         }
     },
@@ -110,10 +114,11 @@ const teamController = {
                 return res.status(404).json({ error: 'Team member not found' });
             }
 
-            // Delete the image file if it exists
+            // Delete the image from Cloudinary if it exists
             if (member.image) {
-                await fs.unlink(path.join(__dirname, '..', 'uploads', member.image))
-                    .catch(err => console.error('Error deleting image file:', err));
+                await cloudinary.uploader.destroy(
+                    path.basename(member.image, path.extname(member.image))
+                );
             }
 
             await Team.findByIdAndDelete(req.params.id);
