@@ -46,6 +46,8 @@ const serviceController = {
         description: req.body.description,
         howitworks: req.body.howitworks,
         whatisService: req.body.whatisService,
+        whatToExpect: req.body.whatToExpect,
+        signs: req.body.signs,
         handledBy: req.body.handledBy,
         imageUrl
       });
@@ -72,6 +74,8 @@ const serviceController = {
       if (req.body.description) updates.description = req.body.description;
       if (req.body.howitworks) updates.howitworks = req.body.howitworks;
       if (req.body.whatisService) updates.whatisService = req.body.whatisService;
+      if (req.body.whatToExpect) updates.whatToExpect = req.body.whatToExpect;
+      if (req.body.signs) updates.signs = req.body.signs;
 
       // Parse handledBy from JSON string
       if (req.body.handledBy) {
