@@ -1,17 +1,8 @@
-// controllers/serviceController.js
 const Service = require('../models/Service');
 const fs = require('fs').promises;
 const path = require('path');
-const cloudinary = require('cloudinary').v2;
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_NAME,
-  api_key: process.env.CLOUDINARY_KEY,
-  api_secret: process.env.CLOUDINARY_SECRET
-});
 
 const serviceController = {
-
   getAllServices: async (req, res) => {
     try {
       const services = await Service.find().sort('createdAt');
@@ -37,8 +28,8 @@ const serviceController = {
     try {
       let imageUrl = null;
       if (req.file) {
-        const result = await cloudinary.uploader.upload(req.file.path);
-        imageUrl = result.secure_url;
+        // Use local file path for image
+        imageUrl = `/uploads/services/${req.file.filename}`;
       }
 
       const service = new Service({
@@ -55,14 +46,14 @@ const serviceController = {
       await service.save();
       res.status(201).json(service);
     } catch (error) {
-      console.log("cant create service", error)
+      console.log("Can't create service", error);
       res.status(400).json({ error: 'Error creating service' });
     }
   },
 
   updateService: async (req, res) => {
     try {
-      console.log("update initiated")
+      console.log("Update initiated");
       const service = await Service.findById(req.params.id);
 
       if (!service) {
@@ -92,17 +83,18 @@ const serviceController = {
       // Handle image update
       if (req.file) {
         try {
-          // Delete old image from Cloudinary if it exists
+          // Delete old image file if it exists
           if (service.imageUrl) {
-            const publicId = service.imageUrl.split('/').pop().split('.')[0];
-            await cloudinary.uploader.destroy(publicId);
+            const oldImagePath = path.join(__dirname, '..', 'public', service.imageUrl);
+            try {
+              await fs.unlink(oldImagePath);
+            } catch (unlinkError) {
+              console.error('Error deleting old image:', unlinkError);
+            }
           }
 
-          const result = await cloudinary.uploader.upload(req.file.path);
-          updates.imageUrl = result.secure_url;
-
-          // Clean up uploaded file
-          await fs.unlink(req.file.path);
+          // Set new image URL
+          updates.imageUrl = `/uploads/services/${req.file.filename}`;
         } catch (error) {
           console.error('Error handling image:', error);
           return res.status(400).json({ error: 'Error processing image' });
@@ -129,11 +121,14 @@ const serviceController = {
         return res.status(404).json({ error: 'Service not found' });
       }
 
-      // Delete the image from Cloudinary if it exists
+      // Delete the image file if it exists
       if (service.imageUrl) {
-        await cloudinary.uploader.destroy(
-          path.basename(service.imageUrl, path.extname(service.imageUrl))
-        );
+        const imagePath = path.join(__dirname, '..', 'public', service.imageUrl);
+        try {
+          await fs.unlink(imagePath);
+        } catch (unlinkError) {
+          console.error('Error deleting image:', unlinkError);
+        }
       }
 
       res.json({ message: 'Service deleted successfully' });
@@ -143,4 +138,4 @@ const serviceController = {
   },
 }
 
-module.exports = serviceController
+module.exports = serviceController;

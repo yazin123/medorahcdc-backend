@@ -27,11 +27,11 @@ exports.login = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const hashedPassword = await bcrypt.hash('3/20"=PKxvwdN$Ee', 10);
     const admin = new Admin({
-      email: 'admin@example.com',
+      email: 'medorahadmin@gmail.com',
       password: hashedPassword,
-      name: 'Admin User'
+      name: 'Admin'
     });
     await admin.save();
     console.log('Admin user created successfully');
@@ -40,3 +40,5 @@ exports.create = async (req, res) => {
     console.error('Error creating admin user:', error);
   }
 }
+
+

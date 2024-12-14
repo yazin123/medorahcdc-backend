@@ -9,7 +9,7 @@ const authMiddleware = require('../middleware/auth');
 // Configure multer for image upload
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const uploadDir = 'uploads/testimonials';
+        const uploadDir = './uploads/testimonials/';
         // Create directory if it doesn't exist
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });

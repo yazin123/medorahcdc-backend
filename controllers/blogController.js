@@ -1,14 +1,6 @@
-// controllers/blogController.js
 const Blog = require('../models/Blog');
 const fs = require('fs').promises;
 const path = require('path');
-const cloudinary = require('cloudinary').v2;
-
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_NAME,
-    api_key: process.env.CLOUDINARY_KEY,
-    api_secret: process.env.CLOUDINARY_SECRET
-});
 
 exports.getAllBlogs = async (req, res) => {
     try {
@@ -34,28 +26,23 @@ exports.getBlogById = async (req, res) => {
 };
 
 exports.createBlog = async (req, res) => {
-  try {
-    const imageUrls = await Promise.all(
-      req.files.map(async (file) => {
-        // Upload the file to Cloudinary and get the secure URL
-        const result = await cloudinary.uploader.upload(file.path);
-        return result.secure_url;
-      })
-    );
+    try {
+        // Generate image URLs for local uploads
+        const imageUrls = req.files.map(file => `/uploads/blogs/${file.filename}`);
 
-    const blogData = {
-      ...req.body,
-      image: imageUrls,
-      tags: Array.isArray(req.body.tags) ? req.body.tags : req.body.tags.split(',').map(tag => tag.trim())
-    };
+        const blogData = {
+            ...req.body,
+            image: imageUrls,
+            tags: Array.isArray(req.body.tags) ? req.body.tags : req.body.tags.split(',').map(tag => tag.trim())
+        };
 
-    const blog = new Blog(blogData);
-    await blog.save();
-    res.status(201).json(blog);
-  } catch (error) {
-    console.error('Error creating blog:', error);
-    res.status(400).json({ error: 'Error creating blog' });
-  }
+        const blog = new Blog(blogData);
+        await blog.save();
+        res.status(201).json(blog);
+    } catch (error) {
+        console.error('Error creating blog:', error);
+        res.status(400).json({ error: 'Error creating blog' });
+    }
 };
 
 exports.getBlogBySlug = async (req, res) => {
@@ -94,12 +81,10 @@ exports.updateBlog = async (req, res) => {
             return res.status(404).json({ error: 'Blog not found' });
         }
 
+        // Combine existing images with new uploads
         const imageUrls = [...(blog.image || [])];
         if (req.files?.length) {
-            const newImageUrls = await Promise.all(req.files.map(async (file) => {
-                const result = await cloudinary.uploader.upload(file.path);
-                return result.secure_url;
-            }));
+            const newImageUrls = req.files.map(file => `/uploads/blogs/${file.filename}`);
             imageUrls.push(...newImageUrls);
         }
 
@@ -129,11 +114,15 @@ exports.deleteBlog = async (req, res) => {
             return res.status(404).json({ error: 'Blog not found' });
         }
 
-        // Delete associated images from Cloudinary
+        // Delete associated image files from the uploads directory
         if (blog.image && blog.image.length > 0) {
             for (const imageUrl of blog.image) {
-                const publicId = imageUrl.split('/').pop().split('.')[0];
-                await cloudinary.uploader.destroy(publicId);
+                const imagePath = path.join(__dirname, '..', 'public', imageUrl);
+                try {
+                    await fs.unlink(imagePath);
+                } catch (unlinkError) {
+                    console.error(`Error deleting image ${imagePath}:`, unlinkError);
+                }
             }
         }
 

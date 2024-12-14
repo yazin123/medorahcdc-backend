@@ -1,14 +1,6 @@
-const cloudinary = require('cloudinary').v2;
 const Testimonial = require('../models/Testimonial');
-
-
-// Configure Cloudinary
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
+const fs = require('fs').promises;
+const path = require('path');
 
 exports.getAllTestimonials = async (req, res) => {
     try {
@@ -38,10 +30,6 @@ exports.createTestimonial = async (req, res) => {
         // Validate required fields
         const { name, content } = req.body;
         if (!name || !content) {
-            // If there's an uploaded file, delete it since the validation failed
-            if (req.file) {
-                await cloudinary.uploader.destroy(req.file.public_id);
-            }
             return res.status(400).json({ error: 'Name and content are required fields' });
         }
 
@@ -56,8 +44,7 @@ exports.createTestimonial = async (req, res) => {
 
         // Add image path if file was uploaded
         if (req.file) {
-            const result = await cloudinary.uploader.upload(req.file.path);
-            testimonialData.image = result.secure_url;
+            testimonialData.image = `/uploads/testimonials/${req.file.filename}`;
         }
 
         const testimonial = new Testimonial(testimonialData);
@@ -74,18 +61,12 @@ exports.updateTestimonial = async (req, res) => {
     try {
         const testimonial = await Testimonial.findById(req.params.id);
         if (!testimonial) {
-            if (req.file) {
-                await cloudinary.uploader.destroy(req.file.public_id);
-            }
             return res.status(404).json({ error: 'Testimonial not found' });
         }
 
         // Validate required fields
         const { name, content } = req.body;
         if (!name || !content) {
-            if (req.file) {
-                await cloudinary.uploader.destroy(req.file.public_id);
-            }
             return res.status(400).json({ error: 'Name and content are required fields' });
         }
 
@@ -100,13 +81,18 @@ exports.updateTestimonial = async (req, res) => {
 
         // Handle image update
         if (req.file) {
-            // Delete old image from Cloudinary if it exists
+            // Delete old image file if it exists
             if (testimonial.image) {
-                const publicId = testimonial.image.split('/').pop().split('.')[0];
-                await cloudinary.uploader.destroy(publicId);
+                const oldImagePath = path.join(__dirname, '..', 'public', testimonial.image);
+                try {
+                    await fs.unlink(oldImagePath);
+                } catch (unlinkError) {
+                    console.error('Error deleting old image:', unlinkError);
+                }
             }
-            const result = await cloudinary.uploader.upload(req.file.path);
-            updateData.image = result.secure_url;
+
+            // Set new image URL
+            updateData.image = `/uploads/testimonials/${req.file.filename}`;
         }
 
         // Update testimonial
@@ -130,10 +116,14 @@ exports.deleteTestimonial = async (req, res) => {
             return res.status(404).json({ error: 'Testimonial not found' });
         }
 
-        // Delete associated image from Cloudinary if it exists
+        // Delete associated image file if it exists
         if (testimonial.image) {
-            const publicId = testimonial.image.split('/').pop().split('.')[0];
-            await cloudinary.uploader.destroy(publicId);
+            const imagePath = path.join(__dirname, '..', 'public', testimonial.image);
+            try {
+                await fs.unlink(imagePath);
+            } catch (unlinkError) {
+                console.error('Error deleting image:', unlinkError);
+            }
         }
 
         await testimonial.deleteOne();

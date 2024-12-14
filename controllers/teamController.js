@@ -1,14 +1,6 @@
-const cloudinary = require('cloudinary').v2;
 const Team = require('../models/Team');
 const fs = require('fs').promises;
 const path = require('path');
-
-
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_NAME,
-    api_key: process.env.CLOUDINARY_KEY,
-    api_secret: process.env.CLOUDINARY_SECRET
-});
 
 const teamController = {
     getAllTeamMembers: async (req, res) => {
@@ -34,11 +26,10 @@ const teamController = {
 
     createTeamMember: async (req, res) => {
         try {
-            console.log("creating")
+            console.log("creating");
             let imageUrl = null;
             if (req.file) {
-                const result = await cloudinary.uploader.upload(req.file.path);
-                imageUrl = result.secure_url;
+                imageUrl = `/uploads/team/${req.file.filename}`;
             }
 
             const member = new Team({
@@ -56,7 +47,7 @@ const teamController = {
             await member.save();
             res.status(201).json(member);
         } catch (error) {
-            console.log("error creating team member : ",error)
+            console.log("error creating team member: ", error);
             res.status(400).json({ error: error.message || 'Error creating team member' });
         }
     },
@@ -81,14 +72,18 @@ const teamController = {
             // Handle image update
             if (req.file) {
                 try {
-                    // Delete old image from Cloudinary if it exists
+                    // Delete old image file if it exists
                     if (member.image) {
-                        const publicId = member.image.split('/').pop().split('.')[0];
-                        await cloudinary.uploader.destroy(publicId);
+                        const oldImagePath = path.join(__dirname, '..', 'public', member.image);
+                        try {
+                            await fs.unlink(oldImagePath);
+                        } catch (unlinkError) {
+                            console.error('Error deleting old image:', unlinkError);
+                        }
                     }
 
-                    const result = await cloudinary.uploader.upload(req.file.path);
-                    updates.image = result.secure_url;
+                    // Set new image URL
+                    updates.image = `/uploads/team/${req.file.filename}`;
                 } catch (error) {
                     console.error('Error handling image:', error);
                     return res.status(400).json({ error: 'Error processing image' });
@@ -114,11 +109,14 @@ const teamController = {
                 return res.status(404).json({ error: 'Team member not found' });
             }
 
-            // Delete the image from Cloudinary if it exists
+            // Delete the image file if it exists
             if (member.image) {
-                await cloudinary.uploader.destroy(
-                    path.basename(member.image, path.extname(member.image))
-                );
+                const imagePath = path.join(__dirname, '..', 'public', member.image);
+                try {
+                    await fs.unlink(imagePath);
+                } catch (unlinkError) {
+                    console.error('Error deleting image:', unlinkError);
+                }
             }
 
             await Team.findByIdAndDelete(req.params.id);
