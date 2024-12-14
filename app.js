@@ -1,3 +1,12 @@
+const https = require('https');
+const http = require('http');
+const fs = require('fs');
+
+// or
+const server = http.createServer(app);
+
+
+
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
