@@ -1,11 +1,3 @@
-const https = require('https');
-const http = require('http');
-const fs = require('fs');
-
-// or
-const server = http.createServer(app);
-
-
 
 require('dotenv').config();
 const express = require('express');
@@ -28,7 +20,7 @@ const contactRoutes = require('./routes/contact');
 
 // Import Middleware
 const allowedOrigins = [
-  'http://localhost:3000','https://medorahcdc.vercel.app/' // Your frontend URL
+  'http://localhost:3000','https://medorahcdc.com/', 'https://www.medorahcdc.com/' // Your frontend URL
  ];
  
  const options = {
