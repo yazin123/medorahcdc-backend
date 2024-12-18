@@ -20,14 +20,24 @@ const contactRoutes = require('./routes/contact');
 
 // Import Middleware
 const allowedOrigins = [
-  'http://localhost:3000','https://medorahcdc.com/', 'https://www.medorahcdc.com/' // Your frontend URL
- ];
- 
- const options = {
-   origin: '*',
-   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], // Specify allowed methods
-   credentials: true,
- };
+  'http://localhost:3000', 
+  'https://medorahcdc.com', 
+  'https://www.medorahcdc.com'
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+
 const errorHandler = require('./middleware/errorHandler');
 
 // Initialize Express app
@@ -39,8 +49,12 @@ mongoose.connect(process.env.MONGODB_URI)
     .catch(err => console.error('MongoDB connection error:', err));
 
 // Middleware
-app.use(helmet()); // Security headers
-app.use(cors(options));
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+  crossOriginEmbedderPolicy: { policy: 'credentialless' }
+}));
+app.use(cors(corsOptions));
 app.use(compression()); // Compress responses
 app.use(morgan('dev')); // Logging
 app.use(express.json());
@@ -50,11 +64,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Update your Express static file serving configuration
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-    setHeaders: (res, path, stat) => {
-      res.set('Access-Control-Allow-Origin', '*');
-      res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    }
-  }));
+  setHeaders: (res, path) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Methods', 'GET');
+    res.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  }
+}));
 
 // API Routes
 app.use('/api/admin', adminRoutes);
