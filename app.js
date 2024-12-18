@@ -49,12 +49,8 @@ mongoose.connect(process.env.MONGODB_URI)
     .catch(err => console.error('MongoDB connection error:', err));
 
 // Middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
-  crossOriginEmbedderPolicy: { policy: 'credentialless' }
-}));
-app.use(cors(corsOptions));
+
+app.use(cors);
 app.use(compression()); // Compress responses
 app.use(morgan('dev')); // Logging
 app.use(express.json());
@@ -62,15 +58,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
-// Update your Express static file serving configuration
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  setHeaders: (res, path) => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.set('Access-Control-Allow-Methods', 'GET');
-    res.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  }
-}));
 
 // API Routes
 app.use('/api/admin', adminRoutes);
