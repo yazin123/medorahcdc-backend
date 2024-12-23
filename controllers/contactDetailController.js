@@ -1,6 +1,40 @@
 // controllers/contactController.js
 const ContactDetails = require('../models/ContactDetails');
 
+const nodemailer = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_APP_PASSWORD
+  }
+});
+
+exports.sendContactEmail = async (req, res) => {
+    try {
+        const { firstName, lastName, email, phone, message } = req.body;
+        
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: process.env.RECIPIENT_EMAIL,
+            subject: 'New Contact Form Submission',
+            html: `
+                <h3>New Contact Form Submission</h3>
+                <p><strong>Name:</strong> ${firstName} ${lastName}</p>
+                <p><strong>Email:</strong> ${email}</p>
+                <p><strong>Phone:</strong> ${phone}</p>
+                <p><strong>Message:</strong> ${message}</p>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        res.status(200).json({ message: 'Email sent successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error sending email', error: error.message });
+    }
+};
+
 // Get all contacts
 exports.getContacts = async (req, res) => {
     console.log("reached contact controller")
