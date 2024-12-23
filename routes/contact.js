@@ -18,4 +18,6 @@ router.put('/:id', authMiddleware,contactController.updateContact);
 // DELETE contact
 router.delete('/:id',authMiddleware, contactController.deleteContact);
 
+router.post('/send-email', contactController.sendContactEmail);
+
 module.exports = router;
